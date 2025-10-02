@@ -7,12 +7,18 @@
   <style>
     body { font-family: sans-serif; margin: 0; padding: 0; }
     nav { display: flex; background: #222; color: #fff; }
-    nav button { flex: 1; padding: 1em; background: #222; color: #fff; border: none; cursor: pointer; }
+    nav button { flex: 1; padding: 1em; background: #222; color: #fff; border: none; cursor: pointer; font-size: 1rem; }
     nav button.active { background: #444; }
     .tab { display: none; padding: 1em; }
     .tab.active { display: block; }
-    input, select, button { margin: 0.25em 0; padding: 0.5em; }
+    input, select, button, textarea { 
+      margin: 0.25em 0; 
+      padding: 0.5em; 
+      font-size: 1rem; /* prevents iOS zoom */
+    }
     .exercise-item { margin: 0.25em 0; padding: 0.5em; border-bottom: 1px solid #ccc; }
+    .set-form { margin-top: 1em; }
+    .set-log { margin-top: 1em; padding: 0.5em; border-bottom: 1px solid #eee; }
   </style>
 </head>
 <body>
@@ -37,9 +43,17 @@
       <label>Exercise:
         <select id="exerciseSelect"></select>
       </label>
-      <button id="addSetBtn">Add Set</button>
+
+      <div id="setForm" class="set-form" style="display:none;">
+        <label>Reps: <input type="number" id="repsInput"></label><br>
+        <label>Weight (lbs): <input type="number" id="weightInput"></label><br>
+        <label>Rest (sec): <input type="number" id="restInput"></label><br>
+        <label>Notes: <input type="text" id="notesInput"></label><br>
+        <button id="saveSetBtn">Save Set</button>
+      </div>
     </div>
 
+    <h3>Logged Sets</h3>
     <div id="setsLog"></div>
   </div>
 
@@ -58,8 +72,9 @@
 
 <script>
 let exercisesDB = JSON.parse(localStorage.getItem("exercisesDB")) || [];
+let setsLog = JSON.parse(localStorage.getItem("setsLog")) || [];
 
-// Switch tabs
+// --- Tab Switching ---
 function switchTab(tab) {
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
@@ -69,7 +84,7 @@ function switchTab(tab) {
 document.getElementById("trackerTabBtn").onclick = () => switchTab("tracker");
 document.getElementById("exercisesTabBtn").onclick = () => switchTab("exercises");
 
-// Add exercise
+// --- Add Exercise ---
 document.getElementById("addExerciseBtn").onclick = () => {
   const name = document.getElementById("exerciseName").value.trim();
   const tags = Array.from(document.querySelectorAll(".tagCheckbox:checked")).map(cb => cb.value);
@@ -84,7 +99,6 @@ document.getElementById("addExerciseBtn").onclick = () => {
   renderExerciseList();
 };
 
-// Render exercise list
 function renderExerciseList() {
   const listDiv = document.getElementById("exerciseList");
   listDiv.innerHTML = "";
@@ -97,7 +111,7 @@ function renderExerciseList() {
 }
 renderExerciseList();
 
-// Populate dropdown when day type is selected
+// --- Tracker Dropdowns ---
 document.getElementById("dayTypeSelect").onchange = () => {
   const type = document.getElementById("dayTypeSelect").value;
   const wrapper = document.getElementById("exerciseSelectWrapper");
@@ -115,20 +129,54 @@ document.getElementById("dayTypeSelect").onchange = () => {
     select.appendChild(opt);
   });
   wrapper.style.display = filtered.length > 0 ? "block" : "none";
+  document.getElementById("setForm").style.display = "none";
 };
 
-// Add set logging
-document.getElementById("addSetBtn").onclick = () => {
-  const exName = document.getElementById("exerciseSelect").value;
-  if (!exName) return;
-  const reps = prompt("Reps?");
-  const weight = prompt("Weight?");
-  const log = document.getElementById("setsLog");
-  const div = document.createElement("div");
-  div.textContent = `${exName} - ${reps} reps @ ${weight} lbs`;
-  log.appendChild(div);
+// Show set form when exercise chosen
+document.getElementById("exerciseSelect").onchange = () => {
+  document.getElementById("setForm").style.display = "block";
 };
+
+// --- Save Set ---
+document.getElementById("saveSetBtn").onclick = () => {
+  const exName = document.getElementById("exerciseSelect").value;
+  const reps = document.getElementById("repsInput").value;
+  const weight = document.getElementById("weightInput").value;
+  const rest = document.getElementById("restInput").value;
+  const notes = document.getElementById("notesInput").value;
+
+  if (!exName || !reps || !weight) {
+    alert("Please enter exercise, reps, and weight.");
+    return;
+  }
+
+  const setData = { exName, reps, weight, rest, notes, date: new Date().toISOString() };
+  setsLog.push(setData);
+  localStorage.setItem("setsLog", JSON.stringify(setsLog));
+  renderSetsLog();
+
+  // Clear inputs for next entry
+  document.getElementById("repsInput").value = "";
+  document.getElementById("weightInput").value = "";
+  document.getElementById("restInput").value = "";
+  document.getElementById("notesInput").value = "";
+};
+
+function renderSetsLog() {
+  const logDiv = document.getElementById("setsLog");
+  logDiv.innerHTML = "";
+  setsLog.forEach(set => {
+    const div = document.createElement("div");
+    div.className = "set-log";
+    div.textContent = `${set.exName} — ${set.reps} reps @ ${set.weight} lbs` +
+      (set.rest ? `, Rest: ${set.rest}s` : "") +
+      (set.notes ? `, Notes: ${set.notes}` : "");
+    logDiv.appendChild(div);
+  });
+}
+renderSetsLog();
 </script>
 </body>
 </html>
+
 
