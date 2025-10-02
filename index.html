@@ -2,125 +2,133 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Workout Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
-    h1 { text-align: center; }
-    .day, .exercise, .set { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 8px; background: white; }
-    button { margin: 5px; padding: 6px 12px; border-radius: 6px; border: none; background: #007aff; color: white; cursor: pointer; }
-    button:hover { background: #005bb5; }
-    input, select, textarea { margin: 5px 0; padding: 6px; width: 100%; border: 1px solid #ccc; border-radius: 6px; }
+    body { font-family: sans-serif; margin: 0; padding: 0; }
+    nav { display: flex; background: #222; color: #fff; }
+    nav button { flex: 1; padding: 1em; background: #222; color: #fff; border: none; cursor: pointer; }
+    nav button.active { background: #444; }
+    .tab { display: none; padding: 1em; }
+    .tab.active { display: block; }
+    input, select, button { margin: 0.25em 0; padding: 0.5em; }
+    .exercise-item { margin: 0.25em 0; padding: 0.5em; border-bottom: 1px solid #ccc; }
   </style>
 </head>
 <body>
-  <h1>Workout Tracker</h1>
-  <div id="days"></div>
-  <button onclick="addDay()">➕ Add Day</button>
+  <nav>
+    <button id="trackerTabBtn" class="active">Tracker</button>
+    <button id="exercisesTabBtn">Exercises</button>
+  </nav>
 
-  <script>
-    let data = JSON.parse(localStorage.getItem('workoutData')) || { days: [] };
+  <!-- Tracker Tab -->
+  <div id="trackerTab" class="tab active">
+    <h2>Workout Tracker</h2>
+    <label>Day Type:
+      <select id="dayTypeSelect">
+        <option value="">--Choose--</option>
+        <option value="push">Push</option>
+        <option value="pull">Pull</option>
+        <option value="legs">Legs</option>
+      </select>
+    </label>
 
-    function saveData() {
-      localStorage.setItem('workoutData', JSON.stringify(data));
-    }
+    <div id="exerciseSelectWrapper" style="display:none;">
+      <label>Exercise:
+        <select id="exerciseSelect"></select>
+      </label>
+      <button id="addSetBtn">Add Set</button>
+    </div>
 
-    function render() {
-      const daysDiv = document.getElementById('days');
-      daysDiv.innerHTML = '';
-      data.days.forEach((day, dayIndex) => {
-        const dayDiv = document.createElement('div');
-        dayDiv.className = 'day';
+    <div id="setsLog"></div>
+  </div>
 
-        const titleInput = document.createElement('input');
-        titleInput.value = day.name;
-        titleInput.placeholder = 'Day name (e.g. Push Day, Monday)';
-        titleInput.oninput = (e) => { day.name = e.target.value; saveData(); };
-        dayDiv.appendChild(titleInput);
+  <!-- Exercises Tab -->
+  <div id="exercisesTab" class="tab">
+    <h2>Exercises Database</h2>
+    <label>Exercise Name: <input id="exerciseName" type="text"></label><br>
+    <label><input type="checkbox" value="push" class="tagCheckbox"> Push</label>
+    <label><input type="checkbox" value="pull" class="tagCheckbox"> Pull</label>
+    <label><input type="checkbox" value="legs" class="tagCheckbox"> Legs</label><br>
+    <button id="addExerciseBtn">Add Exercise</button>
 
-        day.exercises.forEach((ex, exIndex) => {
-          const exDiv = document.createElement('div');
-          exDiv.className = 'exercise';
+    <h3>Saved Exercises</h3>
+    <div id="exerciseList"></div>
+  </div>
 
-          const exName = document.createElement('input');
-          exName.value = ex.name;
-          exName.placeholder = 'Exercise name';
-          exName.oninput = (e) => { ex.name = e.target.value; saveData(); };
-          exDiv.appendChild(exName);
+<script>
+let exercisesDB = JSON.parse(localStorage.getItem("exercisesDB")) || [];
 
-          ex.sets.forEach((set, setIndex) => {
-            const setDiv = document.createElement('div');
-            setDiv.className = 'set';
+// Switch tabs
+function switchTab(tab) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+  document.getElementById(tab+"Tab").classList.add("active");
+  document.getElementById(tab+"TabBtn").classList.add("active");
+}
+document.getElementById("trackerTabBtn").onclick = () => switchTab("tracker");
+document.getElementById("exercisesTabBtn").onclick = () => switchTab("exercises");
 
-            const reps = document.createElement('input');
-            reps.type = 'number';
-            reps.value = set.reps;
-            reps.placeholder = 'Reps';
-            reps.oninput = (e) => { set.reps = e.target.value; saveData(); };
-            setDiv.appendChild(reps);
+// Add exercise
+document.getElementById("addExerciseBtn").onclick = () => {
+  const name = document.getElementById("exerciseName").value.trim();
+  const tags = Array.from(document.querySelectorAll(".tagCheckbox:checked")).map(cb => cb.value);
+  if (!name || tags.length === 0) {
+    alert("Enter name and select at least one tag.");
+    return;
+  }
+  exercisesDB.push({ name, tags });
+  localStorage.setItem("exercisesDB", JSON.stringify(exercisesDB));
+  document.getElementById("exerciseName").value = "";
+  document.querySelectorAll(".tagCheckbox").forEach(cb => cb.checked = false);
+  renderExerciseList();
+};
 
-            const weight = document.createElement('input');
-            weight.type = 'number';
-            weight.value = set.weight;
-            weight.placeholder = 'Weight (lbs)';
-            weight.oninput = (e) => { set.weight = e.target.value; saveData(); };
-            setDiv.appendChild(weight);
+// Render exercise list
+function renderExerciseList() {
+  const listDiv = document.getElementById("exerciseList");
+  listDiv.innerHTML = "";
+  exercisesDB.forEach(ex => {
+    const div = document.createElement("div");
+    div.className = "exercise-item";
+    div.textContent = ex.name + " (" + ex.tags.join(", ") + ")";
+    listDiv.appendChild(div);
+  });
+}
+renderExerciseList();
 
-            const rest = document.createElement('input');
-            rest.type = 'text';
-            rest.value = set.rest;
-            rest.placeholder = 'Rest (sec)';
-            rest.oninput = (e) => { set.rest = e.target.value; saveData(); };
-            setDiv.appendChild(rest);
+// Populate dropdown when day type is selected
+document.getElementById("dayTypeSelect").onchange = () => {
+  const type = document.getElementById("dayTypeSelect").value;
+  const wrapper = document.getElementById("exerciseSelectWrapper");
+  const select = document.getElementById("exerciseSelect");
+  if (!type) {
+    wrapper.style.display = "none";
+    return;
+  }
+  const filtered = exercisesDB.filter(ex => ex.tags.includes(type));
+  select.innerHTML = "";
+  filtered.forEach(ex => {
+    const opt = document.createElement("option");
+    opt.value = ex.name;
+    opt.textContent = ex.name;
+    select.appendChild(opt);
+  });
+  wrapper.style.display = filtered.length > 0 ? "block" : "none";
+};
 
-            const notes = document.createElement('textarea');
-            notes.value = set.notes;
-            notes.placeholder = 'Notes';
-            notes.oninput = (e) => { set.notes = e.target.value; saveData(); };
-            setDiv.appendChild(notes);
-
-            const delSetBtn = document.createElement('button');
-            delSetBtn.textContent = '🗑️ Delete Set';
-            delSetBtn.onclick = () => { ex.sets.splice(setIndex, 1); saveData(); render(); };
-            setDiv.appendChild(delSetBtn);
-
-            exDiv.appendChild(setDiv);
-          });
-
-          const addSetBtn = document.createElement('button');
-          addSetBtn.textContent = '➕ Add Set';
-          addSetBtn.onclick = () => { ex.sets.push({ reps: '', weight: '', rest: '', notes: '' }); saveData(); render(); };
-          exDiv.appendChild(addSetBtn);
-
-          const delExBtn = document.createElement('button');
-          delExBtn.textContent = '🗑️ Delete Exercise';
-          delExBtn.onclick = () => { day.exercises.splice(exIndex, 1); saveData(); render(); };
-          exDiv.appendChild(delExBtn);
-
-          dayDiv.appendChild(exDiv);
-        });
-
-        const addExBtn = document.createElement('button');
-        addExBtn.textContent = '➕ Add Exercise';
-        addExBtn.onclick = () => { day.exercises.push({ name: '', sets: [] }); saveData(); render(); };
-        dayDiv.appendChild(addExBtn);
-
-        const delDayBtn = document.createElement('button');
-        delDayBtn.textContent = '🗑️ Delete Day';
-        delDayBtn.onclick = () => { data.days.splice(dayIndex, 1); saveData(); render(); };
-        dayDiv.appendChild(delDayBtn);
-
-        daysDiv.appendChild(dayDiv);
-      });
-    }
-
-    function addDay() {
-      data.days.push({ name: '', exercises: [] });
-      saveData();
-      render();
-    }
-
-    render();
-  </script>
+// Add set logging
+document.getElementById("addSetBtn").onclick = () => {
+  const exName = document.getElementById("exerciseSelect").value;
+  if (!exName) return;
+  const reps = prompt("Reps?");
+  const weight = prompt("Weight?");
+  const log = document.getElementById("setsLog");
+  const div = document.createElement("div");
+  div.textContent = `${exName} - ${reps} reps @ ${weight} lbs`;
+  log.appendChild(div);
+};
+</script>
 </body>
 </html>
+
