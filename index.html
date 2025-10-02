@@ -71,111 +71,87 @@
   </div>
 
 <script>
-let exercisesDB = JSON.parse(localStorage.getItem("exercisesDB")) || [];
-let setsLog = JSON.parse(localStorage.getItem("setsLog")) || [];
-
-// --- Tab Switching ---
-function switchTab(tab) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
-  document.getElementById(tab+"Tab").classList.add("active");
-  document.getElementById(tab+"TabBtn").classList.add("active");
-}
-document.getElementById("trackerTabBtn").onclick = () => switchTab("tracker");
-document.getElementById("exercisesTabBtn").onclick = () => switchTab("exercises");
-
-// --- Add Exercise ---
-document.getElementById("addExerciseBtn").onclick = () => {
-  const name = document.getElementById("exerciseName").value.trim();
-  const tags = Array.from(document.querySelectorAll(".tagCheckbox:checked")).map(cb => cb.value);
-  if (!name || tags.length === 0) {
-    alert("Enter name and select at least one tag.");
-    return;
-  }
-  exercisesDB.push({ name, tags });
-  localStorage.setItem("exercisesDB", JSON.stringify(exercisesDB));
-  document.getElementById("exerciseName").value = "";
-  document.querySelectorAll(".tagCheckbox").forEach(cb => cb.checked = false);
-  renderExerciseList();
-};
-
-function renderExerciseList() {
-  const listDiv = document.getElementById("exerciseList");
-  listDiv.innerHTML = "";
-  exercisesDB.forEach(ex => {
-    const div = document.createElement("div");
-    div.className = "exercise-item";
-    div.textContent = ex.name + " (" + ex.tags.join(", ") + ")";
-    listDiv.appendChild(div);
-  });
-}
-renderExerciseList();
-
-// --- Tracker Dropdowns ---
-document.getElementById("dayTypeSelect").onchange = () => {
-  const type = document.getElementById("dayTypeSelect").value;
-  const wrapper = document.getElementById("exerciseSelectWrapper");
-  const select = document.getElementById("exerciseSelect");
-  if (!type) {
-    wrapper.style.display = "none";
-    return;
-  }
-  const filtered = exercisesDB.filter(ex => ex.tags.includes(type));
-  select.innerHTML = "";
-  filtered.forEach(ex => {
-    const opt = document.createElement("option");
-    opt.value = ex.name;
-    opt.textContent = ex.name;
-    select.appendChild(opt);
-  });
-  wrapper.style.display = filtered.length > 0 ? "block" : "none";
-  document.getElementById("setForm").style.display = "none";
-};
-
-// Show set form when exercise chosen
-document.getElementById("exerciseSelect").onchange = () => {
-  document.getElementById("setForm").style.display = "block";
-};
-
-// --- Save Set ---
-document.getElementById("saveSetBtn").onclick = () => {
-  const exName = document.getElementById("exerciseSelect").value;
-  const reps = document.getElementById("repsInput").value;
-  const weight = document.getElementById("weightInput").value;
-  const rest = document.getElementById("restInput").value;
-  const notes = document.getElementById("notesInput").value;
-
-  if (!exName || !reps || !weight) {
-    alert("Please enter exercise, reps, and weight.");
-    return;
+  // Load saved logs
+  function loadLogs() {
+    const logs = JSON.parse(localStorage.getItem("workoutLogs")) || [];
+    return logs;
   }
 
-  const setData = { exName, reps, weight, rest, notes, date: new Date().toISOString() };
-  setsLog.push(setData);
-  localStorage.setItem("setsLog", JSON.stringify(setsLog));
-  renderSetsLog();
+  // Save logs back to localStorage
+  function saveLogs(logs) {
+    localStorage.setItem("workoutLogs", JSON.stringify(logs));
+  }
 
-  // Clear inputs for next entry
-  document.getElementById("repsInput").value = "";
-  document.getElementById("weightInput").value = "";
-  document.getElementById("restInput").value = "";
-  document.getElementById("notesInput").value = "";
-};
+  // Handle form submission
+  document.getElementById("logForm").addEventListener("submit", function (e) {
+    e.preventDefault();
 
-function renderSetsLog() {
-  const logDiv = document.getElementById("setsLog");
-  logDiv.innerHTML = "";
-  setsLog.forEach(set => {
-    const div = document.createElement("div");
-    div.className = "set-log";
-    div.textContent = `${set.exName} — ${set.reps} reps @ ${set.weight} lbs` +
-      (set.rest ? `, Rest: ${set.rest}s` : "") +
-      (set.notes ? `, Notes: ${set.notes}` : "");
-    logDiv.appendChild(div);
+    const date = document.getElementById("date").value;
+    const exercise = document.getElementById("exercise").value.trim();
+    const sets = document.getElementById("sets").value;
+
+    if (!date || !exercise || !sets) return;
+
+    const logs = loadLogs();
+    logs.push({ date, exercise, sets });
+    saveLogs(logs);
+
+    document.getElementById("logForm").reset();
+    updateExerciseOptions();
+    updateLogTable();
   });
-}
-renderSetsLog();
+
+  // Update exercise dropdown from history
+  function updateExerciseOptions() {
+    const exerciseInput = document.getElementById("exercise");
+    const logs = loadLogs();
+    const exercises = [...new Set(logs.map(log => log.exercise))];
+
+    const datalist = document.getElementById("exerciseList");
+    datalist.innerHTML = "";
+    exercises.forEach(ex => {
+      const option = document.createElement("option");
+      option.value = ex;
+      datalist.appendChild(option);
+    });
+  }
+
+  // Show saved logs in table
+  function updateLogTable() {
+    const logs = loadLogs();
+    const tbody = document.getElementById("logTableBody");
+    tbody.innerHTML = "";
+
+    logs.forEach(log => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${log.date}</td>
+        <td>${log.exercise}</td>
+        <td>${log.sets}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  // When exercise is selected, auto-fill sets from last entry
+  document.getElementById("exercise").addEventListener("change", function () {
+    const exercise = this.value.trim();
+    if (!exercise) return;
+
+    const logs = loadLogs();
+    const lastEntry = [...logs].reverse().find(log => log.exercise === exercise);
+    if (lastEntry) {
+      document.getElementById("sets").value = lastEntry.sets;
+    } else {
+      document.getElementById("sets").value = "";
+    }
+  });
+
+  // Initialize
+  updateExerciseOptions();
+  updateLogTable();
 </script>
+
 </body>
 </html>
 
