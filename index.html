@@ -1,158 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Workout Tracker</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workout Logger</title>
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 0; }
-    nav { display: flex; background: #222; color: #fff; }
-    nav button { flex: 1; padding: 1em; background: #222; color: #fff; border: none; cursor: pointer; font-size: 1rem; }
-    nav button.active { background: #444; }
-    .tab { display: none; padding: 1em; }
-    .tab.active { display: block; }
-    input, select, button, textarea { 
-      margin: 0.25em 0; 
-      padding: 0.5em; 
-      font-size: 1rem; /* prevents iOS zoom */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f8f8f8;
     }
-    .exercise-item { margin: 0.25em 0; padding: 0.5em; border-bottom: 1px solid #ccc; }
-    .set-form { margin-top: 1em; }
-    .set-log { margin-top: 1em; padding: 0.5em; border-bottom: 1px solid #eee; }
+    h1 {
+      text-align: center;
+    }
+    form {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin: 8px 0 4px;
+    }
+    input, button {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      font-size: 1rem; /* Prevents zoom on iOS */
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #f0f0f0;
+    }
   </style>
 </head>
 <body>
-  <nav>
-    <button id="trackerTabBtn" class="active">Tracker</button>
-    <button id="exercisesTabBtn">Exercises</button>
-  </nav>
+  <h1>Workout Logger</h1>
 
-  <!-- Tracker Tab -->
-  <div id="trackerTab" class="tab active">
-    <h2>Workout Tracker</h2>
-    <label>Day Type:
-      <select id="dayTypeSelect">
-        <option value="">--Choose--</option>
-        <option value="push">Push</option>
-        <option value="pull">Pull</option>
-        <option value="legs">Legs</option>
-      </select>
-    </label>
+  <form id="logForm">
+    <label for="date">Date:</label>
+    <input type="date" id="date" required />
 
-    <div id="exerciseSelectWrapper" style="display:none;">
-      <label>Exercise:
-        <select id="exerciseSelect"></select>
-      </label>
+    <label for="exercise">Exercise:</label>
+    <input list="exerciseList" id="exercise" placeholder="Enter exercise" required />
+    <datalist id="exerciseList"></datalist>
 
-      <div id="setForm" class="set-form" style="display:none;">
-        <label>Reps: <input type="number" id="repsInput"></label><br>
-        <label>Weight (lbs): <input type="number" id="weightInput"></label><br>
-        <label>Rest (sec): <input type="number" id="restInput"></label><br>
-        <label>Notes: <input type="text" id="notesInput"></label><br>
-        <button id="saveSetBtn">Save Set</button>
-      </div>
-    </div>
+    <label for="sets">Sets:</label>
+    <input type="number" id="sets" placeholder="e.g. 3x12" required />
 
-    <h3>Logged Sets</h3>
-    <div id="setsLog"></div>
-  </div>
+    <button type="submit">Log Workout</button>
+  </form>
 
-  <!-- Exercises Tab -->
-  <div id="exercisesTab" class="tab">
-    <h2>Exercises Database</h2>
-    <label>Exercise Name: <input id="exerciseName" type="text"></label><br>
-    <label><input type="checkbox" value="push" class="tagCheckbox"> Push</label>
-    <label><input type="checkbox" value="pull" class="tagCheckbox"> Pull</label>
-    <label><input type="checkbox" value="legs" class="tagCheckbox"> Legs</label><br>
-    <button id="addExerciseBtn">Add Exercise</button>
+  <h2>Workout History</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Exercise</th>
+        <th>Sets</th>
+      </tr>
+    </thead>
+    <tbody id="logTableBody"></tbody>
+  </table>
 
-    <h3>Saved Exercises</h3>
-    <div id="exerciseList"></div>
-  </div>
+  <script>
+    // Load saved logs
+    function loadLogs() {
+      const logs = JSON.parse(localStorage.getItem("workoutLogs")) || [];
+      return logs;
+    }
 
-<script>
-  // Load saved logs
-  function loadLogs() {
-    const logs = JSON.parse(localStorage.getItem("workoutLogs")) || [];
-    return logs;
-  }
+    // Save logs back to localStorage
+    function saveLogs(logs) {
+      localStorage.setItem("workoutLogs", JSON.stringify(logs));
+    }
 
-  // Save logs back to localStorage
-  function saveLogs(logs) {
-    localStorage.setItem("workoutLogs", JSON.stringify(logs));
-  }
+    // Handle form submission
+    document.getElementById("logForm").addEventListener("submit", function (e) {
+      e.preventDefault();
 
-  // Handle form submission
-  document.getElementById("logForm").addEventListener("submit", function (e) {
-    e.preventDefault();
+      const date = document.getElementById("date").value;
+      const exercise = document.getElementById("exercise").value.trim();
+      const sets = document.getElementById("sets").value;
 
-    const date = document.getElementById("date").value;
-    const exercise = document.getElementById("exercise").value.trim();
-    const sets = document.getElementById("sets").value;
+      if (!date || !exercise || !sets) return;
 
-    if (!date || !exercise || !sets) return;
+      const logs = loadLogs();
+      logs.push({ date, exercise, sets });
+      saveLogs(logs);
 
-    const logs = loadLogs();
-    logs.push({ date, exercise, sets });
-    saveLogs(logs);
+      document.getElementById("logForm").reset();
+      updateExerciseOptions();
+      updateLogTable();
+    });
 
-    document.getElementById("logForm").reset();
+    // Update exercise dropdown from history
+    function updateExerciseOptions() {
+      const exerciseInput = document.getElementById("exercise");
+      const logs = loadLogs();
+      const exercises = [...new Set(logs.map(log => log.exercise))];
+
+      const datalist = document.getElementById("exerciseList");
+      datalist.innerHTML = "";
+      exercises.forEach(ex => {
+        const option = document.createElement("option");
+        option.value = ex;
+        datalist.appendChild(option);
+      });
+    }
+
+    // Show saved logs in table
+    function updateLogTable() {
+      const logs = loadLogs();
+      const tbody = document.getElementById("logTableBody");
+      tbody.innerHTML = "";
+
+      logs.forEach(log => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${log.date}</td>
+          <td>${log.exercise}</td>
+          <td>${log.sets}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // When exercise is selected, auto-fill sets from last entry
+    document.getElementById("exercise").addEventListener("change", function () {
+      const exercise = this.value.trim();
+      if (!exercise) return;
+
+      const logs = loadLogs();
+      const lastEntry = [...logs].reverse().find(log => log.exercise === exercise);
+      if (lastEntry) {
+        document.getElementById("sets").value = lastEntry.sets;
+      } else {
+        document.getElementById("sets").value = "";
+      }
+    });
+
+    // Initialize
     updateExerciseOptions();
     updateLogTable();
-  });
-
-  // Update exercise dropdown from history
-  function updateExerciseOptions() {
-    const exerciseInput = document.getElementById("exercise");
-    const logs = loadLogs();
-    const exercises = [...new Set(logs.map(log => log.exercise))];
-
-    const datalist = document.getElementById("exerciseList");
-    datalist.innerHTML = "";
-    exercises.forEach(ex => {
-      const option = document.createElement("option");
-      option.value = ex;
-      datalist.appendChild(option);
-    });
-  }
-
-  // Show saved logs in table
-  function updateLogTable() {
-    const logs = loadLogs();
-    const tbody = document.getElementById("logTableBody");
-    tbody.innerHTML = "";
-
-    logs.forEach(log => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${log.date}</td>
-        <td>${log.exercise}</td>
-        <td>${log.sets}</td>
-      `;
-      tbody.appendChild(row);
-    });
-  }
-
-  // When exercise is selected, auto-fill sets from last entry
-  document.getElementById("exercise").addEventListener("change", function () {
-    const exercise = this.value.trim();
-    if (!exercise) return;
-
-    const logs = loadLogs();
-    const lastEntry = [...logs].reverse().find(log => log.exercise === exercise);
-    if (lastEntry) {
-      document.getElementById("sets").value = lastEntry.sets;
-    } else {
-      document.getElementById("sets").value = "";
-    }
-  });
-
-  // Initialize
-  updateExerciseOptions();
-  updateLogTable();
-</script>
-
+  </script>
 </body>
 </html>
-
-
